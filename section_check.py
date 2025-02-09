@@ -4,8 +4,7 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
-from openai import OpenAI
-client = OpenAI(api_key= os.environ['BAILIAN_API_KEY'] , base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
+from util import client, extract_from_code_block, extract_json_from_str
 
 os.makedirs("./data", exist_ok=True)
 
@@ -25,52 +24,6 @@ section_check_prompt = '''Please read the input text and follow these instructio
 ]
 '''
 
-def extract_from_code_block(text):
-    matches = re.findall(r'```(.*?)```', text, re.DOTALL)
-    if matches:
-        return [match.strip() for match in matches]
-    else:
-        print("No code blocks found")
-        return []
-    
-reformat_json_prompt = '''Please convert invalid input json to valid json.
-The output should be presented within a code block in the following format: "json\n<output>", where "<output>" is the placeholder for the output.
-'''
-def reformat_json(text):
-    global reformat_json_prompt, client
-    completion = client.chat.completions.create(
-            model="qwen-plus",
-            messages=[
-                {'role': 'system', 'content': reformat_json_prompt},
-                {'role': 'user', 'content': f'```input json\n{text}```'}
-            ],
-            stream=False,
-            temperature=0.0
-        )
-    
-    result = completion.choices[0].message.content
-    new_result = extract_from_code_block(result)[0].strip("json").strip("<").strip(">")
-    return json.loads(new_result)
-
-def reformat_json_multi_round(text, num_round=3):
-    current_round = 0
-    while current_round < num_round:
-        try:
-            result = reformat_json(text)
-            return result
-        except Exception as e:
-            text
-            print(f"{current_round} failed")
-        current_round += 1
-
-def extract_json_from_str(str):
-    result_str = str.strip("json").strip("<").strip(">")
-    try:
-        result_json = json.loads(result_str)
-    except Exception as e:
-        print(f"Exception: {e}")
-        result_json = reformat_json_multi_round(result_str)
-    return result_json
 
 def check_by_llm(text):
     global client, section_check_prompt
