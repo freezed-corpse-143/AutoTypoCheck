@@ -1,7 +1,6 @@
 import sys
 import os
 import json
-import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from util import client, extract_from_code_block, extract_json_from_str
@@ -35,7 +34,7 @@ def check_by_llm(text):
             {'role': 'user', 'content': content}
         ],
         stream=False,
-        temperature=0.0
+        temperature=0.01
     )
     result = completion.choices[0].message.content
     result_str_list = extract_from_code_block(result)
